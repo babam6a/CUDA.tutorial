@@ -11,6 +11,7 @@ This repository contains tutorials and labs for learning CUDA programming, inclu
 - **lab7-concurrency/**: Contains Lab 7, which explores concurrency in CUDA programming through three tasks: Gaussian PDF computation on a single GPU, using CUDA streams to overlap computation and memory transfers, and distributing the workload across multiple GPUs.
 - **lab8-optimizing/**: Contains Lab 8, which focuses on optimizing a CUDA matrix transpose operation through three tasks: naive matrix transpose using global memory, shared memory transpose for improved memory coalescing, and shared memory transpose with bank conflict mitigation.
 - **lab9-cooperative-groups/**: Contains Lab 9, which explores CUDA cooperative groups to perform reductions and stream compaction using thread-level and grid-level synchronization. The lab includes tasks for implementing reduction operations and stream compaction with cooperative groups.
+- **lab10-multi-threading/**: Contains Lab 10, which explores multi-threading in CUDA, including single GPU and multi-GPU configurations using OpenMP and CUDA streams. The lab includes tasks for optimizing Gaussian PDF computation through concurrent execution.
 
 ## How to Start
 To get started with this CUDA tutorial, follow these steps:
