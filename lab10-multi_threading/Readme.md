@@ -2,7 +2,7 @@
 
 This lab explores two main tasks involving multi-threading in CUDA: single GPU multi-threading using OpenMP and multi-GPU multi-threading using CUDA streams and OpenMP. The goal is to leverage both single GPU and multi-GPU configurations to maximize parallel processing efficiency.
 
-### How to Run
+## How to Run
 
 The `Makefile` provided compiles all the necessary programs. You can run and clean the programs using the commands below:
 
