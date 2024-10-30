@@ -24,6 +24,7 @@ This repository contains tutorials and labs for learning CUDA programming, inclu
 
 - **lab11-multi-process-service**: Profiling the impact of NVIDIA MPS on kernel execution times to understand GPU resource sharing.
 
+- **lab12-debugging**: Debugging CUDA applications using compute-sanitizer and cuda-gdb.
 
 ## How to Start
 To get started with this CUDA tutorial, follow these steps:
