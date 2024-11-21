@@ -26,14 +26,16 @@ This repository contains tutorials and labs for learning CUDA programming, inclu
 
 - **lab12-debugging**: Debugging CUDA applications using compute-sanitizer and cuda-gdb.
 
+- **lab13-graphs**: Exploring CUDA Graphs through stream capture and explicit graph creation, and integrating cuBLAS operations for efficient execution.
+
 ## How to Start
 To get started with this CUDA tutorial, follow these steps:
 ```
 # Clone the repository
-git clone https://github.com/SeungjaeLim/kwonst_CUDA_tutorial.git
+git clone https://github.com/SeungjaeLim/CUDA.tutorial.git
 
 # Navigate into the project directory
-cd kwonst_CUDA_tutorial
+cd CUDA.tutorial
 
 # Build and run the Docker container with the tutorial environment
 make up
