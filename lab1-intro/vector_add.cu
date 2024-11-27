@@ -90,7 +90,7 @@ int main(){
   /* TODO: Copy the result vector C from device to host memory.
    * This transfers the result of the vector addition back to CPU memory for validation. */
   /*TODO*/
-  cudaCheckErrors("kernel execution failure or cudaMemcpy H2D failure");
+  cudaCheckErrors("kernel execution failure or cudaMemcpy D2H failure");
 
   // Perform CPU vector addition for comparison
   cpu_vadd(h_A, h_B, h_C_CPU, DSIZE);
