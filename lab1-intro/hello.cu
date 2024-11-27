@@ -8,14 +8,14 @@ __global__ void hello(){
    * `blockIdx.x` gives the index of the block within the grid. 
    *  Use `threadIdx.x` to print the thread index within the block.
    * `threadIdx.x` provides the index of the thread within the block. */
-  printf("Hello from block: %u, thread: %u\n", /*TODO*/, /*TODO*/);
+  printf("Hello from block: %u, thread: %u, block_dim: %u\n", blockIdx.x, threadIdx.x, blockDim.x);
 }
 
 int main(){
   /* TODO: Specify the grid and block configuration.
    * Here, we are launching the kernel with 2 blocks, each containing 2 threads.
    * The configuration `<<<2, 2>>>` represents a grid of 2 blocks, and each block has 2 threads. */
-  hello<<</*TODO*/>>>();
+  hello<<<2, 3>>>();
   cudaDeviceSynchronize();
 }
 

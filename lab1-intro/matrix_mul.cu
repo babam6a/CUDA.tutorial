@@ -46,14 +46,15 @@ __global__ void mmul(const float *A, const float *B, float *C, int ds) {
     int idy = threadIdx.y + blockDim.y * blockIdx.y;  // 1D thread index
     if ((idx < ds) && (idy < ds)) {
         float temp = 0;
-        for (int i = 0; i < ds; i++)
+        for (int i = 0; i < ds; i++) {
             /* TODO: Perform the dot product for the corresponding row in A and column in B.
             * Each thread will iterate over the entire row from A and column from B, multiplying
             * the corresponding elements and accumulating the result in temp. */
-            /*TODO*/
+            temp += A[idx * ds + i] * B[i * ds + idy];
+        }
         /* TODO: Store the computed result in matrix C.
          * Once the dot product is computed, it is stored in the appropriate element of matrix C. */
-        /*TODO*/
+        C[idx * ds + idy] = temp;
     }
 }
 
