@@ -42,38 +42,40 @@ __global__ void stencil_1d(int *in, int *out) {
 
     /* TODO: Allocate shared memory with enough space for the block and the halo region.
      * This includes elements for the block itself and an extra RADIUS elements on each side. */
-    __shared__ int temp[/*TODO*/];
+    __shared__ int temp[BLOCK_SIZE + 2 * RADIUS];
     
     /* TODO: Calculate global and local indices.
      * The global index corresponds to the position in the input array, while the local
      * index corresponds to the position in the shared memory buffer, with an offset for RADIUS. */
-    int gindex = /*TODO*/
-    int lindex = /*TODO*/
+    int gindex = threadIdx.x + blockDim.x * blockIdx.x + RADIUS;
+    int lindex = threadIdx.x + RADIUS;
 
     /* TODO: Load the central part of the block into shared memory.
      * Each thread loads one element from the global input array into the appropriate position
      * in shared memory. */
-    temp[/*TODO*/] = in[/*TODO*/];
+    temp[lindex] = in[gindex];
 
     /* TODO: Load the halo elements into shared memory.
      * Threads at the beginning and end of the block load the necessary RADIUS elements
      * from the left and right halo regions, respectively. */
     if (threadIdx.x < RADIUS) {
-        temp[/*TODO*/] = in[/*TODO*/];
-        temp[/*TODO*/] = in[/*TODO*/];
+        temp[lindex - RADIUS] = in[gindex - RADIUS];
+    } 
+    else if (threadIdx.x >= blockDim.x - RADIUS) {
+        temp[lindex + RADIUS] = in[gindex + RADIUS];
     }
 
     /* TODO: Synchronize threads to ensure all data is loaded before applying the stencil.
      * This is crucial to avoid race conditions where some threads are still loading
      * while others start computing. */
-    /*TODO*/
+    __syncthreads();
 
     /* TODO: Apply the stencil operation.
      * Each thread computes the sum of its neighboring elements as defined by the RADIUS.
      * The sum is calculated using the values stored in shared memory. */
     int result = 0;
     for (int offset = -RADIUS; offset <= RADIUS; offset++)
-        result += temp[/*TODO*/];
+        result += temp[lindex + offset];
 
     // Store the result
     out[gindex] = result;
@@ -105,9 +107,9 @@ int main(void) {
 
     /* TODO: Allocate space for host arrays.
      * Each array needs to accommodate N elements plus 2*RADIUS for the halo region. */
-    int size = /*TODO*/
-    in = /*TODO*/
-    out = /*TODO*/
+    int size = sizeof(int) * (N + 2 * RADIUS);
+    in = (int *)malloc(size);
+    out = (int *)malloc(size);
     cpu_out = (int *)malloc(size);
 
     // Fill input array with random values
@@ -123,7 +125,7 @@ int main(void) {
     /* TODO: Launch the stencil_1d kernel on the GPU.
      * The kernel is launched with N/BLOCK_SIZE blocks and BLOCK_SIZE threads per block.
      * The +RADIUS is used to skip the halo region in the device input array. */
-    stencil_1d<<<N / BLOCK_SIZE, BLOCK_SIZE>>>(/*TODO*/, /*TODO*/);
+    stencil_1d<<<N / BLOCK_SIZE, BLOCK_SIZE>>>(d_in, d_out);
 
     // Copy result back to host
     cudaMemcpy(out, d_out, size, cudaMemcpyDeviceToHost);
