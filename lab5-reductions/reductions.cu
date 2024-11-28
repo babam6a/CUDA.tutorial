@@ -139,7 +139,7 @@ int main() {
     cudaCheckErrors("atomic reduction kernel launch failure");
 
     cudaMemcpy(h_sum, d_sum, sizeof(int), cudaMemcpyDeviceToHost);
-    cudaCheckErrors("atomic reduction kernel execution failure or cudaMemcpy H2D failure");
+    cudaCheckErrors("atomic reduction kernel execution failure or cudaMemcpy D2H failure");
 
     if (abs(*h_sum - cpu_sum) > 0) {
         printf("atomic sum reduction incorrect! CPU: %d, GPU: %d\n", cpu_sum, *h_sum);
@@ -155,10 +155,11 @@ int main() {
     cudaCheckErrors("reduction w/atomic kernel launch failure");
 
     cudaMemcpy(h_sum, d_sum, sizeof(int), cudaMemcpyDeviceToHost);
-    cudaCheckErrors("reduction w/atomic kernel execution failure or cudaMemcpy H2D failure");
+    cudaCheckErrors("reduction w/atomic kernel execution failure or cudaMemcpy D2H failure");
 
     if (abs(*h_sum - cpu_sum) > 0) {
         printf("reduction w/atomic sum incorrect! CPU: %d, GPU: %d\n", cpu_sum, *h_sum);
+        return -1;
     }
     printf("reduction w/atomic sum correct! CPU: %d, GPU: %d\n", cpu_sum, *h_sum);
 
@@ -169,7 +170,7 @@ int main() {
     cudaCheckErrors("reduction warp shuffle kernel launch failure");
 
     cudaMemcpy(h_sum, d_sum, sizeof(int), cudaMemcpyDeviceToHost);
-    cudaCheckErrors("reduction warp shuffle kernel execution failure or cudaMemcpy H2D failure");
+    cudaCheckErrors("reduction warp shuffle kernel execution failure or cudaMemcpy D2H failure");
 
     if (abs(*h_sum - cpu_sum) > 0) {
         printf("reduction warp shuffle sum incorrect! CPU: %d, GPU: %d\n", cpu_sum, *h_sum);
