@@ -86,18 +86,29 @@ int main() {
     /* 
      * TODO: Allocate memory for the first element of the list on the GPU using cudaMalloc.
      */
+    list_elem *gpu_list_base, *gpu_list, *gpu_list_next;
+    cudaMalloc(&gpu_list_base, sizeof(list_elem));
 
     /* 
      * TODO: Copy the entire linked list structure from the host to the GPU.
      * For each element in the list, memory is allocated on the GPU, and the data is copied.
      * Additionally, the next pointer for each node is updated on the GPU to maintain the linked structure.
      */
+    gpu_list = gpu_list_base;
+    for (list_elem *temp = list_base; temp != nullptr; temp = temp->next) {
+        cudaMemcpy(gpu_list, temp, sizeof(list_elem), cudaMemcpyHostToDevice);
+        if (temp->next != nullptr) {
+            cudaMalloc(&gpu_list_next, sizeof(list_elem));
+            cudaMemcpy(&gpu_list->next, &gpu_list_next, sizeof(list_elem *), cudaMemcpyHostToDevice);
+            gpu_list = gpu_list_next;
+        }
+    }
 
     /* 
      * TODO: Launch a CUDA kernel to test the GPU implementation by printing an element from the list.
      * This will use the gpu_print_element kernel to print a specific element from the list on the device.
      */
-    gpu_print_element<<<1, 1>>>(/*TODO*/, ele);
+    gpu_print_element<<<1, 1>>>(gpu_list_base, ele);
     cudaDeviceSynchronize();
     cudaCheckErrors("cuda error!");
 
@@ -113,6 +124,14 @@ int main() {
      * TODO: Free the memory allocated on the device for the linked list.
      * This is done by iterating through the list on the device and freeing each node using cudaFree.
      */
+    
+    temp = gpu_list_base;
+    list_elem *next_temp;
+    while (temp != nullptr) {
+        cudaMemcpy(&next_temp, &temp->next, sizeof(list_elem *), cudaMemcpyDeviceToHost);
+        cudaFree(temp);
+        temp = next_temp;
+    }
 
     return 0;
 }
