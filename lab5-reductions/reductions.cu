@@ -70,7 +70,7 @@ __global__ void reduce_a(int *gdata, int *out) {
     }
 
     /* TODO: Perform parallel reduction to sum the elements in shared memory */
-    for (int j = 2; j < BLOCK_SIZE; j *= 2) {
+    for (int j = 2; j <= BLOCK_SIZE; j *= 2) {
         if (threadIdx.x % j == 0)
             temp[threadIdx.x] += temp[threadIdx.x + (j / 2)];
         __syncthreads();
@@ -176,6 +176,7 @@ int main() {
 
     if (abs(*h_sum - cpu_sum) > 0) {
         printf("reduction w/atomic sum incorrect! CPU: %d, GPU: %d\n", cpu_sum, *h_sum);
+        return -1;
     }
     printf("reduction w/atomic sum correct! CPU: %d, GPU: %d\n", cpu_sum, *h_sum);
 
