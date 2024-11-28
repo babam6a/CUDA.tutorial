@@ -32,18 +32,38 @@ const int BLOCK_SIZE = 256;  // CUDA maximum is 1024
  */
 __global__ void reduce(int *gdata, int *out, size_t n) {
     /* TODO: Declare shared memory for storing partial results for this block */
+    __shared__ int max_out[BLOCK_SIZE];
 
     /* TODO: Calculate thread ID within the block and initialize shared memory */
+    if (threadIdx.x < BLOCK_SIZE)
+        max_out[threadIdx.x] = 0;
 
     /* TODO: Calculate global thread index */
+    int gidx = threadIdx.x + blockDim.x * blockIdx.x;
 
     /* TODO: Load data in grid-stride loop and store the maximum in shared memory */
+    int stride = blockDim.x * gridDim.x;
+
+    if (gidx < n) {
+        int thread_max = 0;
+        for (int i = gidx; i < n; i += stride) {
+            thread_max = max(thread_max, gdata[i]);
+        }
+        max_out[threadIdx.x] = thread_max;
+    }
 
     /* TODO: Synchronize threads before performing reduction on shared memory */
+    __syncthreads();
 
     /* TODO: Perform parallel reduction using a sweep reduction method to find the max */
+    if (threadIdx.x == 0){
+        int total_max = 0;
+        for (int j = 0; j < BLOCK_SIZE; j++) 
+            total_max = max(total_max, max_out[j]);
 
     /* TODO: Write the result from thread 0 in each block to the global output array */
+        out[blockIdx.x] = total_max;
+    }
 }
 
 int main() {

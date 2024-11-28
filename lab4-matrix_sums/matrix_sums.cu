@@ -36,12 +36,15 @@ const int block_size = 256;  // CUDA maximum is 1024
 __global__ void row_sums(const float *A, float *sums, size_t ds){
 
   /* TODO: Calculate the global thread index to map threads to matrix rows. */
-  int idx = /*TODO*/; 
+  int idx = threadIdx.x + blockDim.x * blockIdx.x; 
 
   if (idx < ds) {
     float sum = 0.0f;
     /* TODO: Iterate through the columns of the matrix, accumulating the sum for the row. */
-    /*TODO*/
+    for (int i = 0; i < ds; i++) {
+      sum += A[idx * ds + i];
+    }
+    sums[idx] = sum;
   }
 }
 
@@ -62,12 +65,15 @@ __global__ void row_sums(const float *A, float *sums, size_t ds){
 __global__ void column_sums(const float *A, float *sums, size_t ds){
 
   /* TODO: Calculate the global thread index to map threads to matrix columns. */
-  int idx = /*TODO*/; 
+  int idx = threadIdx.x + blockDim.x * blockIdx.x; 
 
   if (idx < ds) {
     float sum = 0.0f;
     /* TODO: Iterate through the rows of the matrix, accumulating the sum for the column. */
-    /*TODO*/
+    for (int i = 0; i < ds; i++) {
+      sum += A[i * ds + idx];
+    }
+    sums[idx] = sum;
   }
 }
 

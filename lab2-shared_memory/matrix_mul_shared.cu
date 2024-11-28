@@ -52,26 +52,26 @@ __global__ void mmul(const float *A, const float *B, float *C, int ds) {
         for (int i = 0; i < ds / block_size; i++) {
             /* TODO: Load one tile of matrix A and B into shared memory
              * Each thread loads a single element from A and B into the shared memory arrays As and Bs. */
-            As[threadIdx.y][threadIdx.x] = /*TODO*/
-            Bs[threadIdx.y][threadIdx.x] = /*TODO*/
+            As[threadIdx.y][threadIdx.x] = A[idy * ds + i * block_size + threadIdx.x];
+            Bs[threadIdx.y][threadIdx.x] = B[(i * block_size + threadIdx.y) * ds + idx];
 
             /* TODO: Synchronize all threads to ensure complete data load into shared memory
              * All threads must finish loading their part of the sub-tile before moving on. */
-            /*TODO*/
+            __syncthreads();
 
             for (int k = 0; k < block_size; k++) {
                 /* TODO: Perform the dot product for the loaded tile
                  * Each thread computes a portion of the dot product between rows of A and columns of B. */
-                temp += /*TODO*/
+                temp += As[threadIdx.y][k] * Bs[k][threadIdx.x];
             }
             /* TODO: Synchronize threads again to avoid conflicts when moving to the next tile
              * After computing the dot product, all threads must wait for others to finish before
              * loading the next tile. */
-            /*TODO*/
+            __syncthreads();
         }
         /* TODO: Store the final computed value into the output matrix C
          * After all tiles have been processed, the accumulated result is stored in the global matrix C. */
-        /*TODO*/
+        C[idy * ds + idx] = temp;
     }
 }
 

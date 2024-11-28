@@ -52,19 +52,21 @@ __global__ void vadd(const float *A, const float *B, float *C, int ds) {
     /* TODO: Calculate the global index for the current thread.
      * The index is based on the block and thread indices, and it determines which element
      * of the vectors A, B, and C the thread will operate on. */
-    /*TODO*/
+    int gidx = threadIdx.x + blockDim.x * blockIdx.x;
 
     /* TODO: Implement a grid-stride loop.
      * In a grid-stride loop, each thread processes multiple elements by looping over the 
      * vector in steps equal to the total number of threads in the grid. This ensures that 
      * even if the number of threads is smaller than the vector size, all elements are covered. */
-    /*TODO*/
+    int stride = blockDim.x * gridDim.x;
 
     /* TODO: Each thread processes multiple elements.
      * The thread starts at its initial index and continues to add the stride to process 
      * the next set of elements, until it has processed the entire vector. 
      * Each thread adds the corresponding elements from A and B and stores the result in C. */
-    /*TODO*/
+    for (int i = gidx; i < ds; i += stride) {
+        C[i] = A[i] + B[i];
+    }
 }
 
 // CPU implementation of vector addition

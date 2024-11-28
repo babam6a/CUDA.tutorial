@@ -40,7 +40,7 @@ __global__ void atomic_red(const int *gdata, int *out) {
     size_t idx = threadIdx.x + blockDim.x * blockIdx.x;
     if (idx < N) {
         /* TODO: Use atomicAdd to safely add the value from gdata to the output sum */
-        /*TODO*/
+        atomicAdd(out, gdata[idx]);
     }
 }
 
@@ -55,22 +55,30 @@ __global__ void atomic_red(const int *gdata, int *out) {
  */
 __global__ void reduce_a(int *gdata, int *out) {
     /* TODO: Declare shared memory for this block */
-    /*TODO*/
+    __shared__ int temp[BLOCK_SIZE];
 
     /* TODO: Initialize thread-specific local sum in shared memory */
-    /*TODO*/
+    temp[threadIdx.x] = 0;
 
     /* TODO: Calculate global thread index */
-    /*TODO*/
+    int gidx = threadIdx.x + blockDim.x * blockIdx.x;
 
     /* TODO: Load data in chunks using grid-stride loop, accumulating the sum */
-    /*TODO*/
+    int stride = blockDim.x * gridDim.x;
+    for (int i = gidx; i < N; i += stride) {
+        temp[threadIdx.x] += gdata[i];
+    }
 
     /* TODO: Perform parallel reduction to sum the elements in shared memory */
-    /*TODO*/
+    for (int j = 2; j < BLOCK_SIZE; j *= 2) {
+        if (threadIdx.x % j == 0)
+            temp[threadIdx.x] += temp[threadIdx.x + (j / 2)];
+        __syncthreads();
+    }
 
     /* TODO: Use atomicAdd to accumulate the final result safely */
-    /*TODO*/
+    if (threadIdx.x == 0)
+        atomicAdd(out, temp[0]);
 }
 
 /**
@@ -85,7 +93,7 @@ __global__ void reduce_a(int *gdata, int *out) {
  */
 __global__ void reduce_ws(int *gdata, int *out) {
     /* TODO: Declare shared memory to hold the results of each warp(32 threads) */
-    /*TODO*/
+    __shared__ int temp[8];
     int tid = threadIdx.x;
     int idx = threadIdx.x + blockDim.x * blockIdx.x;
     int val = 0;
@@ -94,20 +102,29 @@ __global__ void reduce_ws(int *gdata, int *out) {
     int warpID = threadIdx.x / warpSize;  // Warp ID
 
     /* TODO: Load data in grid-stride loop, accumulating in val */
-    /*TODO*/
+    int stride = blockDim.x * gridDim.x;
+    for (int i = idx; i < N; i += stride)
+        val += gdata[i];
+    __syncthreads();
 
     /* TODO: Perform warp-level reduction using __shfl_down_sync (within each warp) */
-    /*TODO*/
-
+    for (int offset = warpSize / 2; offset > 0; offset /= 2)
+        val += __shfl_down_sync(mask, val, offset);
+    
     /* TODO: Write the warp's result to shared memory */
-    /*TODO*/
+    if (lane == 0)
+        temp[warpID] = val;
+    __syncthreads();
 
     /* TODO: If warp 0, perform final reduction on the values from each warp */
     if (warpID == 0) {
-        /*TODO*/
-
+        int total_sum = temp[lane];
+        total_sum += __shfl_down_sync(mask, total_sum, 4);
+        total_sum += __shfl_down_sync(mask, total_sum, 2);
+        total_sum += __shfl_down_sync(mask, total_sum, 1);
         /* TODO: Use atomicAdd to safely add the final result to the global sum */
-        /*TODO*/
+        if (tid == 0)
+            atomicAdd(out, total_sum);
     }
 }
 
