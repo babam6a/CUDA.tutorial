@@ -106,6 +106,11 @@ int main() {
      * TODO: Allocate memory using malloc and device memory using cudaMalloc.
      * The memory is allocated for both input (h_x) and output (h_y, h_y1) arrays.
      */
+    cudaMalloc(&d_x, ds*sizeof(ft));
+    cudaMalloc(&d_y, ds*sizeof(ft));
+    h_x = (ft *)malloc(ds*sizeof(ft));
+    h_y = (ft *)malloc(ds*sizeof(ft));
+    h_y1 = (ft *)malloc(ds*sizeof(ft));
 
     cudaCheckErrors("allocation error");
 

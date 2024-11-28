@@ -25,7 +25,7 @@
 template <typename T>
 void alloc_bytes(T &ptr, size_t num_bytes){
 
-  ptr = (T)malloc(num_bytes);
+	ptr = (T)malloc(num_bytes);
 }
 
 /**
@@ -39,42 +39,49 @@ void alloc_bytes(T &ptr, size_t num_bytes){
  */
 __global__ void inc(int *array, size_t n){
   
-  size_t idx = threadIdx.x+blockDim.x*blockIdx.x;
-  /* 
-   * TODO: Loop through the array using a grid-stride loop.
-   * This loop ensures that all elements are processed, even if the array is larger than the number of threads.
-   */
+	size_t idx = threadIdx.x+blockDim.x*blockIdx.x;
+	/* 
+	* TODO: Loop through the array using a grid-stride loop.
+	* This loop ensures that all elements are processed, even if the array is larger than the number of threads.
+	*/
+	int stride = blockDim.x * gridDim.x;
+	for (int i = idx; i < n; i += stride)
+		array[i]++;
+
+	__syncthreads();
 }
 
 const size_t  ds = 32ULL*1024ULL*1024ULL;
 
 int main(){
+	int *h_array, *d_array;
+	alloc_bytes(h_array, ds*sizeof(h_array[0]));
+	/* 
+	* TODO: Allocate memory for the device array using cudaMalloc.
+	* This allocates memory on the GPU for the array.
+	*/
+	cudaMalloc(&d_array, ds*sizeof(d_array[0]));
 
-  int *h_array, *d_array;
-  alloc_bytes(h_array, ds*sizeof(h_array[0]));
-  /* 
-   * TODO: Allocate memory for the device array using cudaMalloc.
-   * This allocates memory on the GPU for the array.
-   */
+	cudaCheckErrors("cudaMalloc Error");
+	memset(h_array, 0, ds*sizeof(h_array[0]));
+	/* 
+	* TODO: Copy the initialized host array to the device array using cudaMemcpy.
+	* This transfers data from host to device before launching the kernel.
+	*/
+	cudaMemcpy(d_array, h_array, ds*sizeof(h_array[0]), cudaMemcpyHostToDevice);
 
-  cudaCheckErrors("cudaMalloc Error");
-  memset(h_array, 0, ds*sizeof(h_array[0]));
-  /* 
-   * TODO: Copy the initialized host array to the device array using cudaMemcpy.
-   * This transfers data from host to device before launching the kernel.
-   */
+	cudaCheckErrors("cudaMemcpy H->D Error");
+	inc<<<256, 256>>>(d_array, ds);
+	cudaCheckErrors("kernel launch error");
+	/* 
+	* TODO: Copy the modified array from the device back to the host using cudaMemcpy.
+	* This transfers the incremented array from device memory to host memory for verification.
+	*/
+	cudaMemcpy(h_array, d_array, ds*sizeof(h_array[0]), cudaMemcpyDeviceToHost);
 
-  cudaCheckErrors("cudaMemcpy H->D Error");
-  inc<<<256, 256>>>(d_array, ds);
-  cudaCheckErrors("kernel launch error");
-  /* 
-   * TODO: Copy the modified array from the device back to the host using cudaMemcpy.
-   * This transfers the incremented array from device memory to host memory for verification.
-   */
-
-  cudaCheckErrors("kernel execution or cudaMemcpy D->H Error");
-  for (int i = 0; i < ds; i++) 
-    if (h_array[i] != 1) {printf("mismatch at %d, was: %d, expected: %d\n", i, h_array[i], 1); return -1;}
-  printf("success!\n"); 
-  return 0;
+	cudaCheckErrors("kernel execution or cudaMemcpy D->H Error");
+	for (int i = 0; i < ds; i++) 
+		if (h_array[i] != 1) {printf("mismatch at %d, was: %d, expected: %d\n", i, h_array[i], 1); return -1;}
+	printf("success!\n"); 
+	return 0;
 }

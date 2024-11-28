@@ -14,8 +14,8 @@
     } while (0)
 
 struct list_elem {
-  int key;
-  list_elem *next;
+	int key;
+	list_elem *next;
 };
 
 /**
@@ -32,6 +32,7 @@ void alloc_bytes(T &ptr, size_t num_bytes){
     /* 
      * TODO: Allocate memory using cudaMallocManaged.
      */
+	cudaMallocManaged(&ptr, num_bytes);
 }
 
 /**
@@ -45,10 +46,10 @@ void alloc_bytes(T &ptr, size_t num_bytes){
  */
 __host__ __device__
 void print_element(list_elem *list, int ele_num){
-  list_elem *elem = list;
-  for (int i = 0; i < ele_num; i++)
-    elem = elem->next;
-  printf("key = %d\n", elem->key);
+	list_elem *elem = list;
+	for (int i = 0; i < ele_num; i++)
+		elem = elem->next;
+	printf("key = %d\n", elem->key);
 }
 
 /**
@@ -61,25 +62,25 @@ void print_element(list_elem *list, int ele_num){
  * @param ele_num  Index of the element to print.
  */
 __global__ void gpu_print_element(list_elem *list, int ele_num){
-  print_element(list, ele_num);
+	print_element(list, ele_num);
 }
 
 const int num_elem = 256;
 const int ele = 255;
 int main(){
-
-  list_elem *list_base, *list;
-  alloc_bytes(list_base, sizeof(list_elem));
-  list = list_base;
-  for (int i = 0; i < num_elem; i++) {
-    list->key = i;
-    alloc_bytes(list->next, sizeof(list_elem));
-    list = list->next;
-  }
-  print_element(list_base, ele);
-  /* 
-   * TODO: Synchronize the device to ensure the kernel execution completes.
-   * Check for any errors during execution using cudaCheckErrors.
-   */
-  cudaCheckErrors("cuda error!");
+	list_elem *list_base, *list;
+	alloc_bytes(list_base, sizeof(list_elem));
+	list = list_base;
+	for (int i = 0; i < num_elem; i++) {
+		list->key = i;
+		alloc_bytes(list->next, sizeof(list_elem));
+		list = list->next;
+	}
+	print_element(list_base, ele);
+	/* 
+	* TODO: Synchronize the device to ensure the kernel execution completes.
+	* Check for any errors during execution using cudaCheckErrors.
+	*/
+	cudaDeviceSynchronize();
+	cudaCheckErrors("cuda error!");
 }

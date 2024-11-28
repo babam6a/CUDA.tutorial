@@ -100,15 +100,25 @@ unsigned long long dtime_usec(unsigned long long start) {
 }
 
 int main() {
+    // Check Device number
+    int count;
+    cudaGetDeviceCount(&count);
+    if (count < num_gpus) {
+        fprintf(stderr, "You should run this code with %d or more Devices! Current: %d\n", num_gpus, count);
+        return -1;
+    }
+
     ft *h_x, *d_x[num_gpus], *d_y[num_gpus];
 
-    
     h_x = (ft *)malloc(ds * sizeof(ft));
     for (int i = 0; i < num_gpus; i++) {
-     /* 
-      * TODO: Allocate device memory using cudaMalloc for each GPU.
-      * Allocate input (d_x) and output (d_y) memory on both GPUs.
-      */;
+        /* 
+        * TODO: Allocate device memory using cudaMalloc for each GPU.
+        * Allocate input (d_x) and output (d_y) memory on both GPUs.
+        */
+        cudaSetDevice(i);
+        cudaMalloc(&d_x[i], ds * sizeof(ft));
+        cudaMalloc(&d_y[i], ds * sizeof(ft));
     }
     cudaCheckErrors("allocation error");
 
@@ -120,7 +130,7 @@ int main() {
        /* 
         * TODO: Perform memory copies to transfer input data from the host (h_x) to each GPU.
         */
-        
+        cudaMemcpy(d_x[i], h_x, ds * sizeof(ft), cudaMemcpyHostToDevice);
     }
     cudaCheckErrors("copy error");
     unsigned long long et1 = dtime_usec(0);
@@ -129,6 +139,12 @@ int main() {
      * TODO: Launch the gaussian_pdf kernel on each GPU in parallel.
      * This loop sets the current device and launches the kernel.
      */
+    for (int i = 0; i < num_gpus; i++) {
+        cudaSetDevice(i);
+        gaussian_pdf<<<(ds + 255) / 256, 256>>>(d_x[i], d_y[i], 0.0, 1.0, ds);
+    }
+
+    cudaDeviceSynchronize();
     
     cudaCheckErrors("execution error");
     et1 = dtime_usec(et1);

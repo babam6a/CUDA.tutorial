@@ -106,27 +106,55 @@ int main() {
      * TODO: Allocate pinned host memory using cudaHostAlloc and device memory using cudaMalloc.
      * The memory is allocated for both input (h_x) and output (h_y, h_y1) arrays.
      */
+    cudaHostAlloc(&h_x, ds*sizeof(ft), cudaHostAllocDefault);
+    cudaHostAlloc(&h_y, ds*sizeof(ft), cudaHostAllocDefault);
+    cudaHostAlloc(&h_y1, ds*sizeof(ft), cudaHostAllocDefault);
+    cudaMalloc(&d_x, ds*sizeof(ft));
+    cudaMalloc(&d_y, ds*sizeof(ft));
 
     cudaCheckErrors("allocation error");
     /* 
      * TODO: Create CUDA streams for asynchronous execution.
      * The number of streams is defined by the constant num_streams.
      */
+    cudaStream_t streams[num_streams];
+    for (int i = 0; i < num_streams; i++)
+        cudaStreamCreate(&streams[i]);
 
     cudaCheckErrors("stream creation error");
-    gaussian_pdf<<<(ds + 255) / 256, 256>>>(d_x, d_y, 0.0, 1.0, ds); //warmup
+    gaussian_pdf<<<(ds + 255) / 256, 256>>>(d_x, d_y, 0.0, 1.0, ds); // warmup
     for (size_t i = 0; i < ds; i++) {
         h_x[i] = rand() / (ft)RAND_MAX;
     }
     cudaDeviceSynchronize();
-    unsigned long long et1 = dtime_usec(0);
-    cudaMemset(d_y, 0, ds * sizeof(ft));
-    unsigned long long et = dtime_usec(0);
 
+    unsigned long long et1 = dtime_usec(0);
+    cudaMemcpy(d_x, h_x, ds * sizeof(ft), cudaMemcpyHostToDevice);
+    gaussian_pdf<<<(ds + 255) / 256, 256>>>(d_x, d_y, 0.0, 1.0, ds);
+    cudaMemcpy(h_y1, d_y, ds * sizeof(ft), cudaMemcpyDeviceToHost);
+    et1 = dtime_usec(et1);
+    std::cout << "non-stream elapsed time: " << et1 / (float)USECPSEC << std::endl;
+
+    cudaMemset(d_y, 0, ds * sizeof(ft));
+
+    unsigned long long et = dtime_usec(0);
     /* 
      * TODO: Perform depth-first launch of the kernel across chunks.
      * Memory transfers and kernel launches are executed asynchronously in streams.
      */
+    for (int i = 0; i < num_streams; i++) {
+        cudaMemcpyAsync(&d_x[i * ds / num_streams], &h_x[i * ds / num_streams], 
+                        ds * sizeof(ft) / num_streams, cudaMemcpyHostToDevice, streams[i]);
+        gaussian_pdf<<<(ds + 255) / 256, 256>>>(&d_x[i * ds / num_streams], &d_y[i * ds / num_streams], 
+                            0.0, 1.0, ds / num_streams);
+        cudaMemcpyAsync(&h_y[i * ds / num_streams], &d_y[i * ds / num_streams], 
+                        ds * sizeof(ft) / num_streams, cudaMemcpyDeviceToHost, streams[i]);
+    }
+
+    cudaDeviceSynchronize();
+
+    for (int j = 0; j < num_streams; j++)
+        cudaStreamDestroy(streams[j]);
     
     cudaCheckErrors("streams execution error");
     et = dtime_usec(et);

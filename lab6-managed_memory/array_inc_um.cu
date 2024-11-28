@@ -24,9 +24,10 @@
  */
 template <typename T>
 void alloc_bytes(T &ptr, size_t num_bytes){
- /*
-  * TODO: Allocate memory using cudaMallocManaged.
-  */ 
+	/*
+	* TODO: Allocate memory using cudaMallocManaged.
+	*/ 
+	cudaMallocManaged(&ptr, num_bytes);
 }
 
 /**
@@ -39,34 +40,40 @@ void alloc_bytes(T &ptr, size_t num_bytes){
  * @param n     Size of the array.
  */
 __global__ void inc(int *array, size_t n){
-  size_t idx = threadIdx.x+blockDim.x*blockIdx.x;
-  /* 
-   * TODO: Loop through the array using a grid-stride loop.
-   * This ensures all elements are processed even if the array is larger than the number of threads.
-   */
+	size_t idx = threadIdx.x+blockDim.x*blockIdx.x;
+	/* 
+	* TODO: Loop through the array using a grid-stride loop.
+	* This ensures all elements are processed even if the array is larger than the number of threads.
+	*/
+	int stride = blockDim.x * gridDim.x;
+	for (int i = idx; i < n; i += stride)
+		array[i]++;
+
+	__syncthreads();
 }
 
 const size_t  ds = 32ULL*1024ULL*1024ULL;
 
 int main(){
 
-  int *h_array;
-  alloc_bytes(h_array, ds*sizeof(h_array[0]));
-  cudaCheckErrors("cudaMalloc Error");
-  memset(h_array, 0, ds*sizeof(h_array[0]));
-  cudaCheckErrors("cudaMemcpy H->D Error");
-  /* 
-   * TODO: Launch the CUDA kernel to increment each element of the array by 1.
-   * The kernel is configured with 256 blocks and 256 threads per block.
-   */
-  inc<<<256, 256>>>(/*TODO*/, ds);
-  /* 
-   * TODO: Synchronize the device to ensure the kernel execution is complete.
-   */
+	int *h_array;
+	alloc_bytes(h_array, ds*sizeof(h_array[0]));
+	cudaCheckErrors("cudaMalloc Error");
+	memset(h_array, 0, ds*sizeof(h_array[0]));
+	cudaCheckErrors("cudaMemcpy H->D Error");
+	/* 
+	* TODO: Launch the CUDA kernel to increment each element of the array by 1.
+	* The kernel is configured with 256 blocks and 256 threads per block.
+	*/
+	inc<<<256, 256>>>(h_array, ds);
+	/* 
+	* TODO: Synchronize the device to ensure the kernel execution is complete.
+	*/
+	cudaDeviceSynchronize();
 
-  cudaCheckErrors("kernel launch error");
-  for (int i = 0; i < ds; i++) 
-    if (h_array[i] != 1) {printf("mismatch at %d, was: %d, expected: %d\n", i, h_array[i], 1); return -1;}
-  printf("success!\n"); 
-  return 0;
+	cudaCheckErrors("kernel launch error");
+	for (int i = 0; i < ds; i++) 
+		if (h_array[i] != 1) {printf("mismatch at %d, was: %d, expected: %d\n", i, h_array[i], 1); return -1;}
+	printf("success!\n"); 
+	return 0;
 }
