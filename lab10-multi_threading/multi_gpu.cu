@@ -8,7 +8,7 @@
 // modifiable
 typedef float ft;
 const int chunks = 64;
-const size_t ds = 1024*1024*chunks;
+const size_t ds = 20*1024*1024*chunks;
 const int count = 22;
 const int num_streams = 8;
 
@@ -101,103 +101,115 @@ unsigned long long dtime_usec(unsigned long long start) {
 }
 
 int main() {
-  int num_devices;
-  cudaGetDeviceCount(&num_devices);
-  if (num_devices < 2) {
-    std::cerr << "This code requires at least 2 GPUs." << std::endl;
-    return 1;
-  }
+	int num_devices;
+	cudaGetDeviceCount(&num_devices);
+	if (num_devices < 2) {
+		std::cerr << "This code requires at least 2 GPUs." << std::endl;
+		return 1;
+	}
 
-  ft *h_x, *h_y, *h_y1;
+	ft *h_x, *h_y, *h_y1;
 
-  cudaHostAlloc(&h_x,  ds * sizeof(ft), cudaHostAllocDefault);
-  cudaHostAlloc(&h_y,  ds * sizeof(ft), cudaHostAllocDefault);
-  cudaHostAlloc(&h_y1, ds * sizeof(ft), cudaHostAllocDefault);
+	cudaHostAlloc(&h_x,  ds * sizeof(ft), cudaHostAllocDefault);
+	cudaHostAlloc(&h_y,  ds * sizeof(ft), cudaHostAllocDefault);
+	cudaHostAlloc(&h_y1, ds * sizeof(ft), cudaHostAllocDefault);
 
-  // Initialize input data
-  for (size_t i = 0; i < ds; i++) {
-    h_x[i] = rand() / (ft)RAND_MAX;
-  }
+	// Initialize input data
+	for (size_t i = 0; i < ds; i++) {
+		h_x[i] = rand() / (ft)RAND_MAX;
+	}
 
-  // Warm-up on GPU 0
-  cudaSetDevice(0);
-  ft *d_x, *d_y;
+	// Warm-up on GPU 0
+	cudaSetDevice(0);
+	ft *d_x, *d_y;
 
-  cudaMalloc(&d_x, ds * sizeof(ft));
-  cudaMalloc(&d_y, ds * sizeof(ft));
-  cudaMemcpy(d_x, h_x, ds * sizeof(ft), cudaMemcpyHostToDevice);
-  gaussian_pdf<<<(ds + 255) / 256, 256>>>(d_x, d_y, 0.0, 1.0, ds);
-  cudaDeviceSynchronize();
-  cudaFree(d_x);
-  cudaFree(d_y);
-  cudaCheckErrors("warm-up error");
+	cudaMalloc(&d_x, ds * sizeof(ft));
+	cudaMalloc(&d_y, ds * sizeof(ft));
+	cudaMemcpy(d_x, h_x, ds * sizeof(ft), cudaMemcpyHostToDevice);
+	gaussian_pdf<<<(ds + 255) / 256, 256>>>(d_x, d_y, 0.0, 1.0, ds);
+	cudaDeviceSynchronize();
+	cudaFree(d_x);
+	cudaFree(d_y);
+	cudaCheckErrors("warm-up error");
 
-  // Allocate memory on multiple GPUs
-  ft *d_x_multi[num_devices], *d_y_multi[num_devices];
-  cudaStream_t streams[num_devices][num_streams];
+	// Allocate memory on multiple GPUs
+	ft *d_x_multi[num_devices], *d_y_multi[num_devices];
+	cudaStream_t streams[num_devices][num_streams];
 
-  
-  for (int d = 0; d < num_devices; d++) {
-  /**
-    * TODO: Allocate device memory and create CUDA streams for each GPU.
-    * Use cudaMalloc to allocate memory for d_x_multi and d_y_multi for each GPU.
-    * Use cudaStreamCreate to create streams for asynchronous execution.
-    */
+	
+	for (int d = 0; d < num_devices; d++) {
+		/**
+		* TODO: Allocate device memory and create CUDA streams for each GPU.
+		* Use cudaMalloc to allocate memory for d_x_multi and d_y_multi for each GPU.
+		* Use cudaStreamCreate to create streams for asynchronous execution.
+		*/
+		cudaSetDevice(d);
+		cudaMalloc(&d_x_multi[d], ds * sizeof(ft) / num_devices);
+		cudaMalloc(&d_y_multi[d], ds * sizeof(ft) / num_devices);
+		for (int s = 0; s < num_streams; s++)
+			cudaStreamCreate(&streams[d][s]);
 
-    cudaCheckErrors("memory/stream allocation error");
-  }
+		cudaCheckErrors("memory/stream allocation error");
+	}
 
-  // Non-stream version for comparison
-  unsigned long long et1 = dtime_usec(0);
-  cudaSetDevice(0);
-  cudaMalloc(&d_x, ds * sizeof(ft));
-  cudaMalloc(&d_y, ds * sizeof(ft));
-  cudaMemcpy(d_x, h_x, ds * sizeof(ft), cudaMemcpyHostToDevice);
-  gaussian_pdf<<<(ds + 255) / 256, 256>>>(d_x, d_y, 0.0, 1.0, ds);
-  cudaMemcpy(h_y1, d_y, ds * sizeof(ft), cudaMemcpyDeviceToHost);
-  cudaDeviceSynchronize();
-  et1 = dtime_usec(et1);
-  std::cout << "non-stream elapsed time: " << et1 / (float)USECPSEC << std::endl;
-  cudaFree(d_x);
-  cudaFree(d_y);
-  cudaCheckErrors("non-stream execution error");
+	// Non-stream version for comparison
+	unsigned long long et1 = dtime_usec(0);
+	cudaSetDevice(0);
+	cudaMalloc(&d_x, ds * sizeof(ft));
+	cudaMalloc(&d_y, ds * sizeof(ft));
+	cudaMemcpy(d_x, h_x, ds * sizeof(ft), cudaMemcpyHostToDevice);
+	gaussian_pdf<<<(ds + 255) / 256, 256>>>(d_x, d_y, 0.0, 1.0, ds);
+	cudaMemcpy(h_y1, d_y, ds * sizeof(ft), cudaMemcpyDeviceToHost);
+	cudaDeviceSynchronize();
+	et1 = dtime_usec(et1);
+	std::cout << "non-stream elapsed time: " << et1 / (float)USECPSEC << std::endl;
+	cudaFree(d_x);
+	cudaFree(d_y);
+	cudaCheckErrors("non-stream execution error");
 
 #ifdef USE_STREAMS
-  // Multi-GPU with streams
-  unsigned long long et = dtime_usec(0);
+	// Multi-GPU with streams
+	unsigned long long et = dtime_usec(0);
 
-  /**
-   * TODO: Use OpenMP to parallelize the loop for multi-GPU chunk processing.
-   * This directive will distribute the loop iterations across multiple GPUs.
-   * Ensure OpenMP is enabled during compilation for effective parallel execution.
-   */
+	/**
+	* TODO: Use OpenMP to parallelize the loop for multi-GPU chunk processing.
+	* This directive will distribute the loop iterations across multiple GPUs.
+	* Ensure OpenMP is enabled during compilation for effective parallel execution.
+	*/
+#pragma omp parallel for
+	for (int d = 0; d < num_devices; d++) {
+		/**
+		* TODO: Set the device for the current iteration. 
+		*/
+		cudaSetDevice(d);
+		/* chunk index */
+		for (int i = 0; i < chunks / num_devices; i++) {
+			int chunk_idx = d * (chunks / num_devices) + i;
 
-  for (int d = 0; d < num_devices; d++) {
-    /**
-     * TODO: Set the device for the current iteration. 
-     */
+			/**
+			* TODO: Asynchronously copy input data to the device.
+			* Use cudaMemcpyAsync to transfer data for each chunk from h_x to d_x_multi.
+			*/
+			int chunk_size = ds / chunks;
+			int stream_size = chunk_size / num_streams;
+			for (int s = 0; s < num_streams; s++) {
+				cudaMemcpyAsync(&d_x_multi[d][i * chunk_size + s * stream_size], &h_x[chunk_idx * chunk_size + s * stream_size], stream_size * sizeof(ft), cudaMemcpyHostToDevice, streams[d][s]);
 
-    for (int i = 0; i < chunks / num_devices; i++) {
-      int chunk_idx = d * (chunks / num_devices) + i;
+			/**
+			* TODO: Launch the Gaussian PDF kernel asynchronously.
+			* Launch the kernel for each chunk using the respective CUDA stream.
+			*/
 
-      /**
-       * TODO: Asynchronously copy input data to the device.
-       * Use cudaMemcpyAsync to transfer data for each chunk from h_x to d_x_multi.
-       */
-    
-      /**
-       * TODO: Launch the Gaussian PDF kernel asynchronously.
-       * Launch the kernel for each chunk using the respective CUDA stream.
-       */
-      
+				gaussian_pdf<<<(ds + 255) / 256, 256, 0, streams[d][s]>>>(&d_x_multi[d][i * chunk_size + s * stream_size], &d_y_multi[d][i * chunk_size + s * stream_size], 0.0, 1.0, stream_size);
 
-      /**
-       * TODO: Asynchronously copy output data back to the host.
-       * Use cudaMemcpyAsync to transfer results from d_y_multi to h_y.
-       */
-      
-    }
-  }
+			/**
+			* TODO: Asynchronously copy output data back to the host.
+			* Use cudaMemcpyAsync to transfer results from d_y_multi to h_y.
+			*/
+				cudaMemcpyAsync(&h_y[chunk_idx * chunk_size + s * stream_size], &d_y_multi[d][i * chunk_size + s * stream_size],  stream_size * sizeof(ft), cudaMemcpyDeviceToHost, streams[d][s]);
+			}
+		}
+	}
 
   for (int d = 0; d < num_devices; d++) {
     cudaSetDevice(d);

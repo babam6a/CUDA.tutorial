@@ -6,6 +6,7 @@ using namespace cooperative_groups;
 
 const int nTPB = 256;
 
+/* https://www.olcf.ornl.gov/wp-content/uploads/2020/06/09_Cooperative_Groups.pdf */
 
 /**
  * @brief Performs a reduction operation across the threads in the group.
@@ -26,24 +27,25 @@ __device__ int reduce(thread_group g, int *x, int val) {
   * This rank (lane) is used to determine the position of the thread within the group
   * for performing reduction operations.
   */
-  int lane = ;
+  	int lane = g.thread_rank();
 
   /* TODO: Use a loop to iteratively reduce values in a binary tree fashion */
-  for (int i = ; ; ) {
-    /* TODO: Store the current value in shared memory */
-      
-    /* TODO: Synchronize all threads within the group.*/
+	for (int i = g.size() / 2; i > 0; i /= 2) {
+		/* TODO: Store the current value in shared memory */
+		x[lane] = val;
+		/* TODO: Synchronize all threads within the group.*/
+		g.sync();
+		/* TODO: Perform the reduction.*/
+		if (lane < i)
+			val += x[lane + i];
+		/* TODO: Synchronize again to ensure all threads see the result.*/
+		g.sync();
+	}
 
-    /* TODO: Perform the reduction.*/
-
-    /* TODO: Synchronize again to ensure all threads see the result.*/
-
-  }
-
-  if (g.thread_rank() == 0) {
-    return val;
-  }
-  return 0;
+	if (g.thread_rank() == 0) {
+		return val;
+	}
+	return 0;
 }
 
 /**
@@ -65,14 +67,14 @@ __global__ void my_reduce_kernel(int *data, int *total_sum, int *g1_counter, int
   __shared__ int sdata[nTPB];
 
   /* TODO: Create a thread block group (g1) for full block-level reduction */
-  auto g1 = ;
+  auto g1 = this_thread_block();
   size_t gindex = g1.group_index().x * nTPB + g1.thread_index().x;
 
   /* TODO: Create a 32-thread tile within the block (g2) for partial reduction */
-  auto g2 = ;
+  auto g2 = tiled_partition(g1, 32);
 
   /* TODO: Create a 16-thread tile within g2 for more fine-grained reduction (g3) */
-  auto g3 = ;
+  auto g3 = tiled_partition(g2, 16);
 
   // g1 sum reduction
   int sdata_offset = (g1.thread_index().x / g1.size()) * g1.size();

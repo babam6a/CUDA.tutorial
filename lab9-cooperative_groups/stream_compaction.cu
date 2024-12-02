@@ -56,22 +56,22 @@ __global__ void my_remove_if(const T* __restrict__ idata,
     /* TODO: Define the cooperative group for the current thread block.
      * This will be used for synchronization within the block.
      */
-    auto g = ;
+    auto g = this_thread_block();
     
     /* TODO: Define the grid-wide cooperative group for synchronization across all blocks.
      * This allows synchronizing across the entire grid.
      */
-    auto gg = ;
+    auto gg = this_grid();
 
     /* TODO: Calculate the thread's local ID (thread index within the block).
      * This value will be used for accessing shared memory within the block.
      */
-    unsigned tidx = ;
+    unsigned tidx = g.thread_index().x;
 
     /* TODO: Calculate the global index for each thread in the grid.
      * This index is used to access the input data array in a grid-stride loop.
      */
-    unsigned gidx = ;
+    unsigned gidx = tidx + gg.block_index().x * blockDim.x;
 
     unsigned gridSize = g.size() * gridDim.x;
 
@@ -80,24 +80,27 @@ __global__ void my_remove_if(const T* __restrict__ idata,
         /* TODO: Evaluate the predicate (whether the data matches the remove_val) 
          * and store the result in shared memory.
          */
+        sidxs[tidx] = predicate_test(idata[gidx], remove_val);
+        g.sync();
 
         /* TODO: Perform an in-block prefix sum (scan) using a binary tree approach.
          * Synchronize threads between each step.
          */
         for (int j = 1; j < g.size(); j <<= 1) {
-            
+            if (tidx >= j)
+                sidxs[tidx] += sidxs[tidx - j];
         }
 
         /* TODO: Store the final result of the scan in the global memory (idxs array),
          * which will be used later to compute final indices.
          */
-
+        idxs[i] = sidxs[tidx];    
     }
 
     /* TODO: Synchronize all blocks in the grid to ensure the prefix sum is complete.
      * This is necessary before proceeding to the next step.
      */
-    
+    gg.sync();
 
     // Then compute final index, and move input data to output location
     unsigned stride = 0;
@@ -109,10 +112,12 @@ __global__ void my_remove_if(const T* __restrict__ idata,
             /* TODO: Adjust the index by summing the final results of the prefix sum from previous blocks.
              * This ensures that the values are placed in the correct position in the output array.
              */
+            my_idx += stride;
             
             /* TODO: Write the value to the output array at the calculated index (my_idx - 1).
              * This completes the removal operation.
              */
+            odata[my_idx - 1] = temp;
         }
         stride++;
     }
@@ -150,7 +155,7 @@ int main() {
      * optimal number of blocks per SM for the given kernel (my_remove_if).
      */
     int numBlkPerSM;
-    cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlkPerSM, , , 0);
+    cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlkPerSM, my_remove_if<mytype>, nTPB, 0);
     printf("number of blocks per SM = %d\n", numBlkPerSM);
 
     // Test 1: No remove values
@@ -168,7 +173,7 @@ int main() {
      * This ensures that the kernel is executed in cooperative mode with synchronization 
      * across all thread blocks.
      */
-    cudaLaunchCooperativeKernel(,,,,,);
+    cudaLaunchCooperativeKernel((void *)(my_remove_if<mytype>), grid, block, args, tsize, str);
 
     err = cudaMemcpy(h_data, d_odata, tsize, cudaMemcpyDeviceToHost);
     if (err != cudaSuccess) {
@@ -206,7 +211,7 @@ int main() {
      * This ensures that the kernel is executed in cooperative mode with synchronization 
      * across all thread blocks.
      */
-    cudaLaunchCooperativeKernel(,,,,,);
+    cudaLaunchCooperativeKernel((void *)(my_remove_if<mytype>), grid, block, args, tsize, str);
     
     cudaEventRecord(stop);
 

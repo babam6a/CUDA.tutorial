@@ -69,7 +69,7 @@ __global__ void MatMulKernel(Matrix A, Matrix B, Matrix C) {
     int row = threadIdx.y;
     int col = threadIdx.x;
 
-    for (int m = 0; m < A.width; ++m) {
+    for (int m = 0; m < A.width / BLOCK_SIZE; ++m) {
         Matrix Asub = GetSubMatrix(A, blockRow, m);
         Matrix Bsub = GetSubMatrix(B, m, blockCol);
 
@@ -82,7 +82,7 @@ __global__ void MatMulKernel(Matrix A, Matrix B, Matrix C) {
         __syncthreads();
         for (int e = 0; e < BLOCK_SIZE; ++e){
             Cvalue += As[row][e] * Bs[e][col];}
-
+        __syncthreads();
     }
     SetElement(Csub, row, col, Cvalue);
 }

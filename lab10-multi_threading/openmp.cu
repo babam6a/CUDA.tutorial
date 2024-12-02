@@ -7,7 +7,7 @@
 // modifiable
 typedef float ft;
 const int chunks = 64;
-const size_t ds = 1024*1024*chunks;
+const size_t ds = 20*1024*1024*chunks;
 const int count = 22;
 const int num_streams = 8;
 
@@ -133,6 +133,8 @@ int main() {
   * Ensure OpenMP is enabled during compilation for effective parallel execution.
   */
 
+#pragma omp parallel for \
+  default(shared)
   for (int i = 0; i < chunks; i++) { //depth-first launch
     cudaMemcpyAsync(d_x + i * (ds / chunks), h_x + i * (ds / chunks), (ds / chunks) * sizeof(ft), cudaMemcpyHostToDevice, streams[i % num_streams]);
     gaussian_pdf<<<((ds / chunks) + 255) / 256, 256, 0, streams[i % num_streams]>>>(d_x + i * (ds / chunks), d_y + i * (ds / chunks), 0.0, 1.0, ds / chunks);
